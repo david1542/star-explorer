@@ -78,7 +78,6 @@ local objectSheet = graphics.newImageSheet(IMAGES.GAME_OBJECTS, sheetOptions)
 -- Initialize variables
 local lives = 3
 local score = 0
-local died = false
 local asteroidsTable = {}
  
 local ship
@@ -92,7 +91,6 @@ local uiGroup
 
 -- SFX
 local explosionSound
-local fireSound
 local musicTrack
 local emitters = {}
 
@@ -138,103 +136,13 @@ local function updateText()
     scoreText.text = "Score: " .. score
 end
 
-local function createAsteroid()
-    local randomAsteroidIndex = math.random(3)
-    local newAsteroid = display.newImageRect(mainGroup, objectSheet, randomAsteroidIndex, 102, 85)
-    newAsteroid.myName = "asteroid"
-    table.insert(asteroidsTable, newAsteroid)
-    physics.addBody(newAsteroid, "dynamic", {radius=40, bounce=0.8})
-
-    local whereFrom = math.random(3)
-    if (whereFrom == DIRECTIONS.LEFT) then
-        -- From the left
-        newAsteroid.x = -60
-        newAsteroid.y = math.random(500)
-        newAsteroid:setLinearVelocity(math.random(40,120), math.random(20,60))
-    elseif (whereFrom == DIRECTIONS.TOP) then
-        -- From the top
-        newAsteroid.x = math.random( display.contentWidth )
-        newAsteroid.y = -60
-        newAsteroid:setLinearVelocity( math.random( -40,40 ), math.random( 40,120 ) )
-    elseif (whereFrom == DIRECTIONS.RIGHT) then
-        -- From the right
-        newAsteroid.x = display.contentWidth + 60
-        newAsteroid.y = math.random( 500 )
-        newAsteroid:setLinearVelocity( math.random( -120,-40 ), math.random( 20,60 ) )
-    end
-
-    newAsteroid:applyTorque( math.random( -6,6 ) )
-end
-
-local function fireLaser()
-    if died then
-        return true
-    end
-     
-    audio.play(fireSound)
-    local newLaser = display.newImageRect(mainGroup, objectSheet, 5, 14, 40)
-    physics.addBody(newLaser, "dynamic", {isSensor=true})
-    newLaser.isBullet = true
-    newLaser.myName = "laser"
-
-    newLaser.x = ship.x
-    newLaser.y = ship.y
-    newLaser:toBack()
-
-    transition.to(newLaser, {
-        y=-40,
-        time=TRANSITION_TIMES.LASER_MOVEMENT,
-        onComplete = function() display.remove( newLaser ) end
-    })
-
-    return true
-end
-
-
-local function dragShip( event )
-    local ship = event.target
-    local phase = event.phase
-    if (phase == "began") then
-        -- Set touch focus on the ship
-        display.currentStage:setFocus( ship )
-        -- Store initial offset position
-        ship.touchOffsetX = event.x - ship.x
-    elseif (phase == "moved") then
-        -- Move the ship to the new touch position
-        ship.x = event.x - ship.touchOffsetX
-    elseif ("ended" == phase or "cancelled" == phase) then
-        -- Release touch focus on the ship
-        display.currentStage:setFocus(nil)
-    end
-
-    return true
-end
-
-local function moveShip ( event )
-    transition.to(ship, {
-        x=event.x,
-        time=TRANSITION_TIMES.SHIP_MOVEMENT,
-        transition=easing.outSine
-    })
-end
-
-local function restoreShip()
-    ship.isBodyActive = false
-    ship.x = display.contentCenterX
-    ship.y = display.contentHeight - 100
- 
-    -- Fade in the ship
-    transition.to( ship, { alpha=1, time=4000,
-        onComplete = function()
-            ship.isBodyActive = true
-            died = false
-        end
-    } )
-end
-
 local function gameLoop()
     -- Create new asteroid
-    createAsteroid()
+    local asteroid = require('classes.asteroid').newAsteroid({
+        group = mainGroup,
+        sheet = objectSheet
+    })
+    table.insert(asteroidsTable, asteroid)
 
     -- Remove asteroids which have drifted off screen
     for i = #asteroidsTable, 1, -1 do
@@ -245,7 +153,7 @@ local function gameLoop()
              thisAsteroid.y < -100 or
              thisAsteroid.y > display.contentHeight + 100 )
         then
-            display.remove( thisAsteroid )
+            thisAsteroid:destroy()
             table.remove( asteroidsTable, i )
         end
     end
@@ -266,23 +174,35 @@ local function onCollision( event )
              ( obj1.myName == "asteroid" and obj2.myName == "laser" ) )
         then
             -- Remove both the laser and asteroid
-            display.remove( obj1 )
-            display.remove( obj2 )
-            audio.play( explosionSound )
+            local asteroid
+            local laser
+            if (obj1.myName == 'laser') then
+                laser = obj1
+                asteroid = obj2
+            else
+                laser = obj2
+                asteroid = obj1
+            end
 
+            display.remove( laser )
+            audio.play( explosionSound )
             -- Display an explosion effect
             -- Create the emitter with the decoded parameters
             local emitter = display.newEmitter( explosionParams )
             
             -- Center the emitter within the content area
-            emitter.x = obj1.x
-            emitter.y = obj1.y
+            emitter.x = asteroid.x
+            emitter.y = asteroid.y
             table.insert(emitters, emitter)
 
             -- Removing the asteroid from the table
             for i = #asteroidsTable, 1, -1 do
-                if ( asteroidsTable[i] == obj1 or asteroidsTable[i] == obj2 ) then
-                    table.remove( asteroidsTable, i )
+                if ( asteroidsTable[i] == asteroid ) then
+                    local destroyed = asteroid:applyDamage(ship.fireDamage)
+                    
+                    if destroyed then
+                        table.remove( asteroidsTable, i )
+                    end
                     break
                 end
             end
@@ -292,8 +212,8 @@ local function onCollision( event )
             scoreText.text = "Score: " .. utils.formatWithCommas(score)
         elseif ( ( obj1.myName == "ship" and obj2.myName == "asteroid" ) or
             ( obj1.myName == "asteroid" and obj2.myName == "ship" ) ) then
-            if ( died == false ) then
-                died = true
+            if ( ship.died == false ) then
+                ship.died = true
 
                 audio.play( explosionSound )
                 -- Create the emitter with the decoded parameters
@@ -313,7 +233,9 @@ local function onCollision( event )
 					timer.performWithDelay( 2000, endGame )
                 else
                     ship.alpha = 0
-                    timer.performWithDelay( 1000, restoreShip )
+                    timer.performWithDelay( 1000, function()
+                        ship:restoreShip()
+                    end)
                 end
             end
         end
@@ -323,6 +245,11 @@ end
 function onEnterFrame()
     local delta = getDeltaTime()
     moveBackground(delta)
+
+    for i = #asteroidsTable, 1, -1 do
+        local asteroid = asteroidsTable[i]
+        asteroid:updateHealthBarPosition()
+    end
 end
 
 -- -----------------------------------------------------------------------------------
@@ -357,25 +284,22 @@ function scene:create( event )
 	-- Load the background
     addScrollableBackground(backGroup)
 
-	ship = display.newImageRect(mainGroup, objectSheet, 4, 98, 79 )
-	ship.x = display.contentCenterX
-	ship.y = display.contentHeight - 100
-	physics.addBody( ship, { radius=30, isSensor=true } )
-	ship.myName = "ship"
-
+    ship = require('classes.ship').newShip({
+        group = mainGroup,
+        sheet = objectSheet
+    })
 	-- Display lives and score
 	livesText = display.newText( uiGroup, "Lives: " .. lives, 200, 80, native.systemFont, 36 )
 	scoreText = display.newText( uiGroup, "Score: " .. score, 400, 80, native.systemFont, 36 )
 
-	ship:addEventListener( "tap", fireLaser )
-	ship:addEventListener( "touch", dragShip )
     backGroup:addEventListener( "tap", function(event)
-        moveShip(event)
-        timer.performWithDelay(TRANSITION_TIMES.SHIP_MOVEMENT, fireLaser)
+        ship:moveShip(event)
+        timer.performWithDelay(TRANSITION_TIMES.SHIP_MOVEMENT, function()
+            ship:fireLaser()
+        end)
     end )
 
     explosionSound = audio.loadSound( SOUNDS.EXPLOSION )
-    fireSound = audio.loadSound( SOUNDS.FIRE )
     musicTrack = audio.loadStream( MUSIC.GAME)
 end
 
@@ -425,12 +349,11 @@ end
 
 -- destroy()
 function scene:destroy( event )
-
-	local sceneGroup = self.view
+    local sceneGroup = self.view
+    ship.dispose()
 	-- Code here runs prior to the removal of scene's view
     -- Dispose audio!
     audio.dispose( explosionSound )
-    audio.dispose( fireSound )
     audio.dispose( musicTrack )
 
     -- Removing all the emitters when the stage is destroyed
