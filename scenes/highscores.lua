@@ -1,7 +1,7 @@
 
 local composer = require( "composer" )
 local constants = require( "constants" )
-local utils = require( "utils" )
+local numberUtils = require( "utils.numberUtils" )
 
 local IMAGES = constants.IMAGES
 local MUSIC = constants.MUSIC
@@ -95,7 +95,7 @@ function scene:create( event )
             rankNum:setFillColor( 0.8 )
             rankNum.anchorX = 1
  
-            local thisScore = display.newText( sceneGroup, utils.formatWithCommas(scoresTable[i]), display.contentCenterX-30, yPos, native.systemFont, 36 )
+            local thisScore = display.newText( sceneGroup, numberUtils.formatWithCommas(scoresTable[i]), display.contentCenterX-30, yPos, native.systemFont, 36 )
 			thisScore.anchorX = 0
 		else break	
         end

@@ -1,7 +1,7 @@
 
 local composer = require( "composer" )
 local constants = require( "constants" )
-local utils = require( "utils" )
+local numberUtils = require( "utils.numberUtils" )
 local scene = composer.newScene()
 
 local IMAGES = constants.IMAGES
@@ -30,7 +30,7 @@ function scene:create( event )
 	
 	local finalScoreText = display.newText(sceneGroup, "Final Score", display.contentCenterX, 400, native.systemFont, 34 )
 	local finalScore = composer.getVariable("finalScore")
-	finalScoreText.text = 'Final score: ' .. utils.formatWithCommas(finalScore)
+	finalScoreText.text = 'Final score: ' .. numberUtils.formatWithCommas(finalScore)
 
 	-- Buttons
 	local playButton = display.newText( sceneGroup, "Retry", display.contentCenterX, 700, native.systemFont, 44 )

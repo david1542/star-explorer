@@ -2,7 +2,8 @@
 local composer = require( "composer" )
 local constants = require( "constants" )
 local json = require( "json" )
-local utils = require( "utils" )
+local numberUtils = require( "utils.numberUtils" )
+local fileUtils = require( "utils.fileUtils" )
 local scene = composer.newScene()
 
 local SCENES = constants.SCENES
@@ -60,19 +61,10 @@ local sheetOptions =
     },
 }
 
-function loadFile(path)
-    local filePath = system.pathForFile(path)
-    local f = io.open( filePath, "r" )
-    local emitterData = f:read( "*a" )
-    f:close()
 
-    return emitterData
-end
 
 -- Decode the string
-local explosionParams = json.decode(loadFile(PARTICLES.FIRE_EXPLOSION))
-local galaxyParams = json.decode(loadFile(PARTICLES.GALAXY))
-
+local explosionParams = json.decode(fileUtils.loadFile(PARTICLES.FIRE_EXPLOSION))
 local objectSheet = graphics.newImageSheet(IMAGES.GAME_OBJECTS, sheetOptions)
 
 -- Initialize variables
@@ -96,7 +88,7 @@ local emitters = {}
 
 local background1
 local background2
-local scrollSpeed = 3
+local scrollSpeed = 4
 local runtime = 0
 
 local function addScrollableBackground(group)
@@ -104,12 +96,12 @@ local function addScrollableBackground(group)
 	background1 = display.newImageRect(group, IMAGES.BACKGROUND, display.contentWidth, display.actualContentHeight)
     background1.x = display.contentCenterX
     background1.y = display.contentCenterY
-    background1.alpha = 0.6
+    background1.alpha = 0.7
 
     background2 = display.newImageRect(group, IMAGES.BACKGROUND, display.contentWidth, display.actualContentHeight)
     background2.x = display.contentCenterX
     background2.y = display.contentCenterY - display.actualContentHeight
-    background2.alpha = 0.6
+    background2.alpha = 0.7
 end
 
 local function getDeltaTime()
@@ -136,6 +128,14 @@ local function updateText()
     scoreText.text = "Score: " .. score
 end
 
+local function endGame()
+    ship.dispose()
+    timer.performWithDelay( 2000, function()
+        composer.setVariable( "finalScore", score )
+        composer.gotoScene( SCENES.GAME_OVER, TRANSITIONS.PAGE_CHANGE )
+    end)
+end
+
 local function gameLoop()
     -- Create new asteroid
     local asteroid = require('classes.asteroid').newAsteroid({
@@ -157,11 +157,6 @@ local function gameLoop()
             table.remove( asteroidsTable, i )
         end
     end
-end
-
-local function endGame()
-    composer.setVariable( "finalScore", score )
-    composer.gotoScene( SCENES.GAME_OVER, TRANSITIONS.PAGE_CHANGE )
 end
 
 local function onCollision( event )
@@ -195,6 +190,13 @@ local function onCollision( event )
             emitter.y = asteroid.y
             table.insert(emitters, emitter)
 
+            -- Display damage label
+            local damageLabel = require('classes.damage').newDamage({
+                group = mainGroup,
+                damage = 30,
+                x = asteroid.x,
+                y = asteroid.y
+            })
             -- Removing the asteroid from the table
             for i = #asteroidsTable, 1, -1 do
                 if ( asteroidsTable[i] == asteroid ) then
@@ -209,7 +211,7 @@ local function onCollision( event )
 
             -- Increase score
             score = score + 100
-            scoreText.text = "Score: " .. utils.formatWithCommas(score)
+            scoreText.text = "Score: " .. numberUtils.formatWithCommas(score)
         elseif ( ( obj1.myName == "ship" and obj2.myName == "asteroid" ) or
             ( obj1.myName == "asteroid" and obj2.myName == "ship" ) ) then
             if ( ship.died == false ) then
@@ -228,14 +230,10 @@ local function onCollision( event )
                 livesText.text = "Lives: " .. lives
 
 				if ( lives == 0 ) then
-					-- Game over
-					display.remove( ship )
-					timer.performWithDelay( 2000, endGame )
+                    -- Game over
+                    endGame()
                 else
-                    ship.alpha = 0
-                    timer.performWithDelay( 1000, function()
-                        ship:restoreShip()
-                    end)
+                    ship:kill()
                 end
             end
         end
@@ -272,14 +270,6 @@ function scene:create( event )
 
 	uiGroup = display.newGroup()
 	sceneGroup:insert(uiGroup)
-
-    local emitter = display.newEmitter( galaxyParams )
-            
-    -- Center the emitter within the content area
-    emitter.x = display.contentCenterX
-    emitter.y = display.contentCenterY
-    emitter.alpha = 0.7
-    table.insert(emitters, emitter)
 
 	-- Load the background
     addScrollableBackground(backGroup)
@@ -350,7 +340,6 @@ end
 -- destroy()
 function scene:destroy( event )
     local sceneGroup = self.view
-    ship.dispose()
 	-- Code here runs prior to the removal of scene's view
     -- Dispose audio!
     audio.dispose( explosionSound )

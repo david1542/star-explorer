@@ -13,7 +13,8 @@ local DIRECTIONS = {
 
 local TRANSITION_TIMES = {
     SHIP_MOVEMENT = 250,
-    LASER_MOVEMENT = 500
+    LASER_MOVEMENT = 500,
+    DAMAGE_FLOATING = 1200
 }
 
 local TRANSITIONS = {
@@ -49,7 +50,8 @@ local IMAGES = {
 
 local PARTICLES = {
     FIRE_EXPLOSION = PARTICLES_DIRECTORY .. 'explosion.json',
-    GALAXY = PARTICLES_DIRECTORY .. 'galaxy.json'
+    GALAXY = PARTICLES_DIRECTORY .. 'galaxy.json',
+    JET_FIRE = PARTICLES_DIRECTORY .. 'jet.json'
 }
 
 return {
