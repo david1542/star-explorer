@@ -2,7 +2,8 @@ local SCENES = {
     GAME = 'scenes.game',
     MENU = 'scenes.menu',
     HIGH_SCORES = 'scenes.highscores',
-    GAME_OVER = 'scenes.gameover'
+    GAME_OVER = 'scenes.gameover',
+    LEVEL_SELECT = 'scenes.level_select'
 }
 
 local DIRECTIONS = {
@@ -24,11 +25,13 @@ local TRANSITIONS = {
 local AUDIO_DIRECTORY = 'assets/audio/'
 local IMAGES_DIRECTORY = 'assets/images/'
 local PARTICLES_DIRECTORY = 'assets/particles/'
+local SHEETS_DIRECTORY = 'assets.sheets.'
 
 local DIRECTORIES = {
     AUDIO = AUDIO_DIRECTORY,
     IMAGES = IMAGES_DIRECTORY,
-    PARTICLES = PARTICLES_DIRECTORY
+    PARTICLES = PARTICLES_DIRECTORY,
+    SHEETS = SHEETS_DIRECTORY 
 }
 
 local SOUNDS = {
@@ -37,7 +40,7 @@ local SOUNDS = {
 }
 
 local MUSIC = {
-    GAME = AUDIO_DIRECTORY .. '80s-Space-Game_Looping.wav',
+    GAME = AUDIO_DIRECTORY .. 'game.wav',
     MENU = AUDIO_DIRECTORY .. 'Escape_Looping.wav',
     HIGH_SCORES = AUDIO_DIRECTORY .. 'Midnight-Crawlers_Looping.wav'
 }
@@ -51,7 +54,8 @@ local IMAGES = {
 local PARTICLES = {
     FIRE_EXPLOSION = PARTICLES_DIRECTORY .. 'explosion.json',
     GALAXY = PARTICLES_DIRECTORY .. 'galaxy.json',
-    JET_FIRE = PARTICLES_DIRECTORY .. 'jet.json'
+    JET_FIRE = PARTICLES_DIRECTORY .. 'jet.json',
+    CONFETTI = PARTICLES_DIRECTORY .. 'confetti.json'
 }
 
 return {

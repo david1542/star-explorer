@@ -37,7 +37,7 @@ function _M.newHealthBar(params)
     local paint = { 1, 1, 1 }
     local container = display.newRect( params.x, params.y, params.width, params.height )
     container.stroke = paint
-    container.strokeWidth = 2
+    container.strokeWidth = 1
     container:setFillColor( 0, 0, 0, 0 )
     
     local colorBar = display.newRect( params.x, params.y, params.width, params.height )

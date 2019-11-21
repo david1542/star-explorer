@@ -10,8 +10,8 @@ display.setStatusBar( display.HiddenStatusBar )
 math.randomseed( os.time() )
  
 -- Go to the menu screen
+composer.setVariable('levelCount', 1)
 composer.gotoScene( SCENES.MENU )
-
 -- Reserve channel 1 for background music
 audio.reserveChannels( 1 )
 -- Reduce the overall volume of the channel

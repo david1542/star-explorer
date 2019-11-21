@@ -4,6 +4,7 @@ local constants = require( "constants" )
 local json = require( "json" )
 local numberUtils = require( "utils.numberUtils" )
 local fileUtils = require( "utils.fileUtils" )
+local Asteroid = require('classes.asteroid')
 local scene = composer.newScene()
 
 local SCENES = constants.SCENES
@@ -23,55 +24,18 @@ local physics = require( "physics" )
 physics.start()
 physics.setGravity(0, 0)
 
--- Configure image sheet
-local sheetOptions =
-{
-    frames =
-    {
-        {   -- 1) asteroid 1
-            x = 0,
-            y = 0,
-            width = 102,
-            height = 85
-        },
-        {   -- 2) asteroid 2
-            x = 0,
-            y = 85,
-            width = 90,
-            height = 83
-        },
-        {   -- 3) asteroid 3
-            x = 0,
-            y = 168,
-            width = 100,
-            height = 97
-        },
-        {   -- 4) ship
-            x = 0,
-            y = 265,
-            width = 98,
-            height = 79
-        },
-        {   -- 5) laser
-            x = 98,
-            y = 265,
-            width = 14,
-            height = 40
-        },
-    },
-}
-
-
-
 -- Decode the string
 local explosionParams = json.decode(fileUtils.loadFile(PARTICLES.FIRE_EXPLOSION))
+local confettiParams = json.decode(fileUtils.loadFile(PARTICLES.CONFETTI))
+local sheetOptions = require(DIRECTORIES.SHEETS .. 'general')
 local objectSheet = graphics.newImageSheet(IMAGES.GAME_OBJECTS, sheetOptions)
-
 -- Initialize variables
 local lives = 3
 local score = 0
-local asteroidsTable = {}
- 
+
+local levelData
+local currentWaveIndex = 1
+local currentWave
 local ship
 local gameLoopTimer
 local livesText
@@ -136,25 +100,60 @@ local function endGame()
     end)
 end
 
-local function gameLoop()
-    -- Create new asteroid
-    local asteroid = require('classes.asteroid').newAsteroid({
-        group = mainGroup,
-        sheet = objectSheet
-    })
-    table.insert(asteroidsTable, asteroid)
+local function showConfetti()
+    local emitter = display.newEmitter( confettiParams )
+            
+    -- Center the emitter within the content area
+    emitter.x = display.contentCenterX
+    emitter.y = display.contentCenterY
+    table.insert(emitters, emitter)
+end
 
-    -- Remove asteroids which have drifted off screen
-    for i = #asteroidsTable, 1, -1 do
-        local thisAsteroid = asteroidsTable[i]
- 
-        if ( thisAsteroid.x < -100 or
-             thisAsteroid.x > display.contentWidth + 100 or
-             thisAsteroid.y < -100 or
-             thisAsteroid.y > display.contentHeight + 100 )
-        then
-            thisAsteroid:destroy()
-            table.remove( asteroidsTable, i )
+local function updateScore(points)
+    -- Increase score
+    score = score + points
+    scoreText.text = "Score: " .. numberUtils.formatWithCommas(score)
+    local duration = 500
+    transition.to(scoreText.fill, {
+        r=0.95, g=0.92, b=0.04, a=1, time=duration
+    })
+    transition.to(scoreText, {
+        xScale = 1.3,
+        yScale = 1.3,
+        time=duration
+    })
+    transition.to(scoreText, {
+        xScale = 1,
+        yScale = 1,
+        time=duration,
+        delay=duration
+    })
+    transition.to(scoreText.fill, {
+        r=1, g=1, b=1, a=1, time=duration, delay=duration
+    })
+end
+
+
+local function initiateWave(data)
+    local newWave = require('classes.wave').newWave(data)
+    newWave:onDestroy(updateScore)
+
+    return newWave
+end
+
+local function gameLoop()
+    if currentWave then
+        if not currentWave.initiated then
+            currentWave:initiate()
+        end
+    
+        currentWave:performCheck()
+        if (currentWave.isWaveEnded()) then
+            showConfetti()
+
+            -- Moving to the next wave
+            currentWaveIndex = currentWaveIndex + 1
+            currentWave = initiateWave(levelData.waves[currentWaveIndex])
         end
     end
 end
@@ -198,20 +197,7 @@ local function onCollision( event )
                 y = asteroid.y
             })
             -- Removing the asteroid from the table
-            for i = #asteroidsTable, 1, -1 do
-                if ( asteroidsTable[i] == asteroid ) then
-                    local destroyed = asteroid:applyDamage(ship.fireDamage)
-                    
-                    if destroyed then
-                        table.remove( asteroidsTable, i )
-                    end
-                    break
-                end
-            end
-
-            -- Increase score
-            score = score + 100
-            scoreText.text = "Score: " .. numberUtils.formatWithCommas(score)
+            currentWave:applyDamage(asteroid, ship.fireDamage)
         elseif ( ( obj1.myName == "ship" and obj2.myName == "asteroid" ) or
             ( obj1.myName == "asteroid" and obj2.myName == "ship" ) ) then
             if ( ship.died == false ) then
@@ -244,9 +230,8 @@ function onEnterFrame()
     local delta = getDeltaTime()
     moveBackground(delta)
 
-    for i = #asteroidsTable, 1, -1 do
-        local asteroid = asteroidsTable[i]
-        asteroid:updateHealthBarPosition()
+    if currentWave then
+        currentWave:update()
     end
 end
 
@@ -256,8 +241,7 @@ end
 
 -- create()
 function scene:create( event )
-
-	local sceneGroup = self.view
+    local sceneGroup = self.view
 	-- Code here runs when the scene is first created but has not yet appeared on screen
     
 	physics.pause()  -- Temporarily pause the physics engine
@@ -271,6 +255,10 @@ function scene:create( event )
 	uiGroup = display.newGroup()
 	sceneGroup:insert(uiGroup)
 
+    levelData = require('levels.' .. event.params.level)
+    currentWave = initiateWave(levelData.waves[currentWaveIndex])
+
+    mainGroup:insert(currentWave)
 	-- Load the background
     addScrollableBackground(backGroup)
 

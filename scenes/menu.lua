@@ -14,8 +14,8 @@ local TRANSITIONS = constants.TRANSITIONS
 
 local musicTrack
 
-local function gotoGame()
-    composer.gotoScene(SCENES.GAME, TRANSITIONS.PAGE_CHANGE)
+local function gotoLevelSelect()
+    composer.gotoScene(SCENES.LEVEL_SELECT, TRANSITIONS.PAGE_CHANGE)
 end
  
 local function gotoHighScores()
@@ -41,7 +41,7 @@ function scene:create( event )
 	
 	local playButton = display.newText( sceneGroup, "Play", display.contentCenterX, 700, native.systemFont, 44 )
     playButton:setFillColor( 0.82, 0.86, 1 )
-	playButton:addEventListener( "tap", gotoGame )
+	playButton:addEventListener( "tap", gotoLevelSelect )
 
     local highScoresButton = display.newText( sceneGroup, "High Scores", display.contentCenterX, 810, native.systemFont, 44 )
 	highScoresButton:setFillColor( 0.75, 0.78, 1 )

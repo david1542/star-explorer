@@ -63,6 +63,7 @@ function _M.newShip(params)
         elseif (phase == "moved") then
             -- Move the ship to the new touch position
             ship.x = event.x - ship.touchOffsetX
+            emitter.x = ship.x
         elseif ("ended" == phase or "cancelled" == phase) then
             -- Release touch focus on the ship
             display.currentStage:setFocus(nil)

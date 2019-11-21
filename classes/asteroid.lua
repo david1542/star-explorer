@@ -11,9 +11,34 @@ local originalColor = {
     ALPHA = 1
 }
 
-local fullHp = 100
+local TYPES = {
+    SMALL = 'SMALL',
+    BIG = 'BIG',
+    HUGE = 'HUGE'
+}
+
+local PROPERTIES = {
+    SMALL = {
+        points = 20,
+        scale = 1,
+        hp = 100
+    },
+    BIG = {
+        points = 50,
+        scale = 2,
+        hp = 200
+    },
+    HUGE = {
+        points = 100,
+        scale = 3,
+        hp = 600
+    }
+}
+
 function _M.newAsteroid(params)
     local randomAsteroidIndex = math.random(3)
+    params.type = params.type or 'SMALL'
+    local asteroidType = PROPERTIES[params.type]
     local asteroid = display.newImageRect(params.group, params.sheet, randomAsteroidIndex, 102, 85)
 
     local healthBar = require('classes.healthbar').newHealthBar({
@@ -24,11 +49,15 @@ function _M.newAsteroid(params)
         y = asteroid.y 
     })
 
+    local fullHp = asteroidType.hp
+    local points = asteroidType.points
     asteroid.myName = "asteroid"
     asteroid.hp = fullHp
     asteroid.destroyed = false
+    asteroid.points = points
+    asteroid:scale(asteroidType.scale, asteroidType.scale)
 
-    physics.addBody(asteroid, "dynamic", {radius=40, bounce=0.8})
+    physics.addBody(asteroid, "dynamic", {radius=43 * asteroidType.scale, bounce=0.8})
 
     local whereFrom = math.random(3)
     if (whereFrom == DIRECTIONS.LEFT) then
@@ -81,4 +110,5 @@ function _M.newAsteroid(params)
     return asteroid
 end
 
+_M.TYPES = TYPES
 return _M
